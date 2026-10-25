@@ -63,8 +63,9 @@ class CinematicHUD:
         idx = hand_landmarks[INDEX_MCP]
         pnk = hand_landmarks[PINKY_MCP]
         wrs = hand_landmarks[WRIST]
-        cx = int((idx.x + pnk.x + wrs.x) / 3 * w)
-        cy = int((idx.y + pnk.y + wrs.y) / 3 * h)
+        mid = hand_landmarks[9]
+        cx = int((idx.x + pnk.x + wrs.x + mid.x * 2.0) / 5.0 * w)
+        cy = int((idx.y + pnk.y + wrs.y + mid.y * 2.0) / 5.0 * h)
         return cx, cy
 
     def draw(self, img, hand_landmarks, state, confidence, meta=None):

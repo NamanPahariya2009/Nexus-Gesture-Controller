@@ -17,12 +17,15 @@ class SystemController:
     def __init__(self):
         self.running = True
         self.cap = cv2.VideoCapture(config.CAMERA_ID)
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.CAM_WIDTH)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.CAM_HEIGHT)
         self.cap.set(cv2.CAP_PROP_FPS, config.TARGET_FPS)
 
         self.tracker = HandTracker()
         self.start_time = time.time()
+        self.last_ts_ms = 0
         self.ws = WebSocketServer(port=config.WS_PORT)
         self.fullscreen = getattr(config, 'FULLSCREEN', True)
 
@@ -37,6 +40,7 @@ class SystemController:
             time.time(), [0.5, 0.5],
             min_cutoff=config.ONE_EURO_MIN_CUTOFF,
             beta=config.ONE_EURO_BETA,
+            d_cutoff=config.ONE_EURO_D_CUTOFF,
         )
         classifier = GestureClassifier()
         cursor = PhysicsCursor()
@@ -78,7 +82,10 @@ class SystemController:
                     self.running = False
                 continue
 
-            ts_ms = (current_time - self.start_time) * 1000
+            raw_ts = int((current_time - self.start_time) * 1000)
+            ts_ms = max(self.last_ts_ms + 1, raw_ts)
+            self.last_ts_ms = ts_ms
+
             detection = self.tracker.process(img_rgb, ts_ms)
 
             hand_landmarks = None
@@ -88,8 +95,13 @@ class SystemController:
 
             if detection.hand_landmarks:
                 hand_landmarks = detection.hand_landmarks[0]
-                raw = hand_landmarks[5]
-                norm_x, norm_y = raw.x, raw.y
+
+                idx = hand_landmarks[5]
+                pnk = hand_landmarks[17]
+                wrs = hand_landmarks[0]
+                mid = hand_landmarks[9]
+                norm_x = (idx.x + pnk.x + wrs.x + mid.x * 2.0) / 5.0
+                norm_y = (idx.y + pnk.y + wrs.y + mid.y * 2.0) / 5.0
 
                 filtered = smoother(current_time, [norm_x, norm_y])
                 curr_x, curr_y = filtered[0], filtered[1]
@@ -104,9 +116,10 @@ class SystemController:
                 confidence = meta.get("confidence", 0.0)
 
                 if state in ("SLEEPING", "SLEEP_TOGGLE"):
-                    pass
+                    cursor.reset()
 
                 elif state == "FIST":
+                    cursor.reset()
                     if (current_time - last_toggle_time) > config.DRAG_TOGGLE_COOLDOWN:
                         drag_active = not drag_active
                         last_toggle_time = current_time
@@ -125,29 +138,34 @@ class SystemController:
                         cursor.update_relative(delta_x, delta_y, dt)
 
                     elif state == "CLICK_LEFT":
+                        cursor.reset()
                         if (current_time - last_click_time) > config.CLICK_COOLDOWN:
                             pyautogui.click()
                             last_click_time = current_time
 
                     elif state == "CLICK_RIGHT":
+                        cursor.reset()
                         if (current_time - last_click_time) > config.CLICK_COOLDOWN:
                             pyautogui.rightClick()
                             last_click_time = current_time
 
                     elif state == "DOUBLE_CLICK":
+                        cursor.reset()
                         if (current_time - last_click_time) > config.CLICK_COOLDOWN:
                             pyautogui.doubleClick()
                             last_click_time = current_time
 
                     elif state == "SCROLL":
+                        cursor.reset()
                         scroll_y = meta.get("norm_y", 0.5)
                         if last_scroll_y is not None:
                             dy = scroll_y - last_scroll_y
-                            if abs(dy) > 0.005:
+                            if abs(dy) > 0.003:
                                 pyautogui.scroll(int(-dy * config.SCROLL_SPEED * 100))
                         last_scroll_y = scroll_y
 
                     elif state == "VOLUME":
+                        cursor.reset()
                         vol_y = meta.get("norm_y", 0.5)
                         vol = int(np.interp(vol_y, [0.1, 0.9], [100, 0]))
                         vol = max(0, min(100, vol))
@@ -155,6 +173,7 @@ class SystemController:
                         meta["volume_pct"] = vol
 
                     elif state == "SWIPE":
+                        cursor.reset()
                         swipe_x = meta.get("norm_x", 0.5)
                         result = switcher.update(
                             swipe_x,
@@ -180,6 +199,8 @@ class SystemController:
                 prev_hand_x = None
                 prev_hand_y = None
                 last_scroll_y = None
+                smoother.reset()
+                cursor.reset()
                 switcher.reset()
                 classifier.process(None)
                 hud.draw(img, None, "IDLE", 0.0)

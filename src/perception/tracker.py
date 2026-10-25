@@ -7,7 +7,14 @@ from mediapipe.tasks.python import vision
 class HandTracker:
     def __init__(self, model_path=None):
         if model_path is None:
-            model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'hand_landmarker.task')
+            candidate1 = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'hand_landmarker.task'))
+            candidate2 = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'hand_landmarker.task'))
+            if os.path.exists(candidate1):
+                model_path = candidate1
+            elif os.path.exists(candidate2):
+                model_path = candidate2
+            else:
+                model_path = candidate1
         self.model_path = os.path.abspath(model_path)
 
         if not os.path.exists(self.model_path):

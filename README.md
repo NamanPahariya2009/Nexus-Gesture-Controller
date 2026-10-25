@@ -17,7 +17,7 @@ Most webcam-based mouse controllers map camera coordinates directly to screen pi
 | Gesture | Action | Description |
 |---|---|---|
 | Open Palm or Pointing Index | Move Cursor | Relative movement with dynamic acceleration |
-| Pinch Thumb + Index | Left Click | 0.4s debounce cooldown |
+| Pinch Thumb + Index | Left Click | 0.35s debounce cooldown |
 | Pinch Thumb + Middle | Right Click | Opens context menu |
 | Pinch Thumb + Ring | Double Click | Executes double left-click |
 | Closed Fist | Toggle Drag | Locks mouse button down for dragging; fist again to release |
@@ -26,23 +26,25 @@ Most webcam-based mouse controllers map camera coordinates directly to screen pi
 | Four Fingers + Horizontal Swipe | Switch Desktop | Sends Windows virtual desktop shortcuts (Win + Ctrl + Arrow) |
 | Middle Finger Only (Hold 1s) | Sleep / Wake | Pauses all input until held again for 1 second |
 | Keyboard 'Q' | Quit | Releases all held buttons and exits cleanly |
+| Keyboard 'F' | Fullscreen | Toggles camera HUD between windowed and fullscreen |
 
 ## Project Structure
 
 ```
 Nexus Gesture Controller/
+|-- main.py                    # Root entry point
+|-- requirements.txt           # Python package dependencies
 |-- install_dependencies.bat   # Automated dependency setup
 |-- run.bat                    # Clean launcher (bytecode suppressed)
 |-- README.md                  # Documentation
 |-- LICENSE                    # MIT License
 |-- .gitignore                 # Build and environment exclusions
-|-- backend/
+|-- src/                       # Core application source
 |   |-- config.py              # Central configuration and tuning constants
-|   |-- main.py                # Application entry point
-|   |-- requirements.txt       # Python package list
+|   |-- main.py                # Package entry point
 |   |-- hand_landmarker.task   # MediaPipe HandLandmarker model file
 |   |-- control/
-|   |   |-- mouse_physics.py   # Relative cursor physics and dead-zones
+|   |   |-- mouse_physics.py   # Relative cursor physics, Windows native events & dead-zones
 |   |   `-- system_control.py  # System volume and virtual desktop hotkeys
 |   |-- core/
 |   |   `-- system.py          # Main execution loop and camera processing
@@ -55,8 +57,8 @@ Nexus Gesture Controller/
 |   |   `-- websocket.py       # Local WebSocket broadcaster (port 8765)
 |   `-- ui/
 |       `-- hud.py             # OpenCV camera overlay and joint renderer
-`-- extension/                 # Chrome browser status overlay extension
-    |-- manifest.json          # Extension configuration
+`-- chrome-extension/          # Companion browser overlay extension
+    |-- manifest.json          # Extension configuration (Manifest V3)
     |-- background.js          # Service worker for WebSocket connection
     |-- content.js             # Injected status pill
     |-- popup.html             # Extension toolbar popup
@@ -74,33 +76,32 @@ Nexus Gesture Controller/
 ### 1. Install Dependencies
 Double-click `install_dependencies.bat` or run:
 ```bash
-cd backend
 pip install -r requirements.txt
 ```
 
 ### 2. Run the Application
-Double-click `run.bat` or run:
+Double-click `run.bat` or run from anywhere in the project:
 ```bash
-cd backend
 python main.py
 ```
 
 ### 3. Load the Chrome Extension (Optional)
 1. Open Google Chrome and go to `chrome://extensions/`
 2. Toggle on **Developer mode** in the top-right corner.
-3. Click **Load unpacked** and select the `extension` folder.
-4. The extension will automatically connect to `ws://localhost:8765` when the backend is running.
+3. Click **Load unpacked** and select the `chrome-extension` folder.
+4. The extension will automatically connect to `ws://localhost:8765` when the application is running.
 
 ## Configuration
 
-All parameters can be tuned in `backend/config.py`:
+All parameters can be tuned in `src/config.py`:
 
 - `CAMERA_ID`: Default is `0`. Set to `1` or `2` if using an external USB camera.
-- `BASE_SENSITIVITY`: Base multiplier for cursor speed (default `3.0`).
-- `ACCELERATION_FACTOR`: Non-linear speed gain for fast hand movements (default `20.0`).
-- `DEAD_ZONE`: Anti-tremor threshold (default `0.002`). Movement below this is ignored.
+- `BASE_SENSITIVITY`: Base multiplier for cursor speed (default `1.1`).
+- `ACCELERATION_FACTOR`: Dynamic acceleration curve (default `4.0`).
+- `DEAD_ZONE`: Anti-tremor threshold (default `0.0006`).
 - `SHOW_SKELETON`: Set to `True` or `False` to toggle joint line rendering on the camera feed.
-- `FAILSAFE_FPS`: Minimum acceptable camera framerate before auto-pausing (default `15`).
+- `SHOW_GUIDE`: Toggle the on-screen gesture cheatsheet HUD panel.
+- `FAILSAFE_FPS`: Minimum acceptable camera framerate before auto-pausing (default `10`).
 
 ## Safety Features
 

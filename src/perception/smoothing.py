@@ -2,19 +2,24 @@ import math
 
 
 class OneEuroFilter:
-    def __init__(self, t0, x0, min_cutoff=1.0, beta=0.0, d_cutoff=1.0):
+    def __init__(self, t0=None, x0=None, min_cutoff=1.0, beta=0.0, d_cutoff=1.0):
         self.min_cutoff = float(min_cutoff)
         self.beta = float(beta)
         self.d_cutoff = float(d_cutoff)
         self.x_prev = x0
-        self.dx_prev = self._zero_like(x0)
-        self.t_prev = float(t0)
+        self.dx_prev = self._zero_like(x0) if x0 is not None else None
+        self.t_prev = float(t0) if t0 is not None else None
 
     @staticmethod
     def _zero_like(val):
         if isinstance(val, (list, tuple)):
             return [0.0] * len(val)
         return 0.0
+
+    def reset(self, t0=None, x0=None):
+        self.x_prev = x0
+        self.dx_prev = self._zero_like(x0) if x0 is not None else None
+        self.t_prev = float(t0) if t0 is not None else None
 
     @staticmethod
     def smoothing_factor(t_e, cutoff):
@@ -28,9 +33,21 @@ class OneEuroFilter:
         return a * x + (1 - a) * x_prev
 
     def __call__(self, t, x):
+        if self.x_prev is None or self.t_prev is None:
+            self.x_prev = x
+            self.dx_prev = self._zero_like(x)
+            self.t_prev = float(t)
+            return x
+
         t_e = t - self.t_prev
         if t_e <= 0.0:
             return self.x_prev
+
+        if t_e > 0.2:
+            self.x_prev = x
+            self.dx_prev = self._zero_like(x)
+            self.t_prev = float(t)
+            return x
 
         if isinstance(x, (list, tuple)):
             dx = [(xi - xp) / t_e for xi, xp in zip(x, self.x_prev)]

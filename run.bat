@@ -4,7 +4,6 @@ set PYTHONDONTWRITEBYTECODE=1
 echo ========================================================
 echo         Launching Nexus Gesture Controller
 echo ========================================================
-cd backend
 py -3.12 -B main.py 2>nul
 if errorlevel 1 (
     python -B main.py
