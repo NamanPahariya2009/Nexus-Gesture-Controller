@@ -10,7 +10,8 @@ Most webcam-based mouse controllers map camera coordinates directly to screen pi
 2. **Adaptive OneEuro Filtering**: High-frequency hand tremors are filtered out during static holds, while high-velocity movements pass through with zero perceived latency.
 3. **Intent State Machine**: Distinguishes intentional gestures from transition movements, preventing accidental clicks while moving the hand.
 4. **Desktop and Media Integration**: Controls Windows volume proportionally and executes virtual desktop switching shortcuts.
-5. **Real-time Status Overlay**: An optional Chrome extension connects over local WebSockets to display an unobtrusive status pill in the browser.
+5. **Two-Hand Multitasking & Air Zoom**: Allows your right hand to drive the cursor while your left hand handles volume, scrolling, and desktop switching simultaneously, or use both hands for pinch-to-zoom.
+6. **Native Real-Time HUD**: Built-in OpenCV camera overlay renders skeletal joints, motion trails, dynamic meters, and an interactive gesture reference card directly on your desktop.
 
 ## Gesture Map
 
@@ -55,31 +56,22 @@ Nexus Gesture Controller/
 |-- README.md                  # Documentation
 |-- LICENSE                    # MIT License
 |-- .gitignore                 # Build and environment exclusions
-|-- src/                       # Core application source
-|   |-- config.py              # Central configuration and tuning constants
-|   |-- main.py                # Package entry point
-|   |-- hand_landmarker.task   # MediaPipe HandLandmarker model file
-|   |-- control/
-|   |   |-- mouse_physics.py   # Relative cursor physics, Windows native events & dead-zones
-|   |   `-- system_control.py  # System volume and virtual desktop hotkeys
-|   |-- core/
-|   |   `-- system.py          # Main execution loop and camera processing
-|   |-- intent/
-|   |   `-- classifier.py      # Gesture detection and state classification
-|   |-- perception/
-|   |   |-- smoothing.py       # OneEuro adaptive low-pass filter
-|   |   `-- tracker.py         # MediaPipe Tasks vision wrapper
-|   |-- server/
-|   |   `-- websocket.py       # Local WebSocket broadcaster (port 8765)
-|   `-- ui/
-|       `-- hud.py             # OpenCV camera overlay and joint renderer
-`-- chrome-extension/          # Companion browser overlay extension
-    |-- manifest.json          # Extension configuration (Manifest V3)
-    |-- background.js          # Service worker for WebSocket connection
-    |-- content.js             # Injected status pill
-    |-- popup.html             # Extension toolbar popup
-    |-- popup.js               # Popup handler
-    `-- icon.png               # Extension icon
+`-- src/                       # Core application source
+    |-- config.py              # Central configuration and tuning constants
+    |-- main.py                # Package entry point
+    |-- hand_landmarker.task   # MediaPipe HandLandmarker model file
+    |-- control/
+    |   |-- mouse_physics.py   # Relative cursor physics, Windows native events & dead-zones
+    |   `-- system_control.py  # System volume and virtual desktop hotkeys
+    |-- core/
+    |   `-- system.py          # Main execution loop and camera processing
+    |-- intent/
+    |   `-- classifier.py      # Gesture detection and state classification
+    |-- perception/
+    |   |-- smoothing.py       # OneEuro adaptive low-pass filter
+    |   `-- tracker.py         # MediaPipe Tasks vision wrapper
+    `-- ui/
+        `-- hud.py             # OpenCV camera overlay and joint renderer
 ```
 
 ## Setup and Installation
@@ -100,12 +92,6 @@ Double-click `run.bat` or run from anywhere in the project:
 ```bash
 python main.py
 ```
-
-### 3. Load the Chrome Extension (Optional)
-1. Open Google Chrome and go to `chrome://extensions/`
-2. Toggle on **Developer mode** in the top-right corner.
-3. Click **Load unpacked** and select the `chrome-extension` folder.
-4. The extension will automatically connect to `ws://localhost:8765` when the application is running.
 
 ## Configuration
 

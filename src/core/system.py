@@ -11,7 +11,6 @@ from intent.classifier import GestureClassifier
 from control.mouse_physics import PhysicsCursor
 from control.system_control import set_volume, DesktopSwitcher
 from ui.hud import CinematicHUD
-from server.websocket import WebSocketServer
 
 
 class SystemController:
@@ -27,7 +26,6 @@ class SystemController:
         self.tracker = HandTracker()
         self.start_time = time.time()
         self.last_ts_ms = 0
-        self.ws = WebSocketServer(port=config.WS_PORT)
         self.fullscreen = getattr(config, 'FULLSCREEN', True)
 
     def run(self):
@@ -48,9 +46,6 @@ class SystemController:
         cursor = PhysicsCursor()
         hud = CinematicHUD()
         switcher = DesktopSwitcher()
-
-        self.ws.start()
-        print(f"[{config.APP_NAME}] WebSocket server running on ws://localhost:{config.WS_PORT}")
 
         last_time = time.time()
         prev_hand_x = None
@@ -303,14 +298,6 @@ class SystemController:
                 state_s=state_s,
                 meta_s=meta_s,
                 zoom_active=zoom_active,
-            )
-
-            active_gesture = "ZOOM" if zoom_active else state_p
-            self.ws.update(
-                mode=active_gesture,
-                fps=fps,
-                hand_detected=(primary_landmarks is not None or secondary_landmarks is not None),
-                gesture=active_gesture,
             )
 
             cv2.putText(img, f"{config.APP_NAME}  |  FPS: {fps}",

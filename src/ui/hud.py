@@ -16,18 +16,26 @@ HAND_CONNECTIONS = [
     (0, 17),
 ]
 
-GUIDE_ITEMS = [
-    ("Move", "Right Palm / Index"),
+GUIDE_PRIMARY = [
+    ("Move", "Palm / Index"),
     ("Left Click", "Thumb + Index"),
     ("Right Click", "Thumb + Middle"),
-    ("Double Click", "Thumb + Ring"),
     ("Drag / Drop", "Closed Fist"),
-    ("Scroll", "Left Peace Sign"),
-    ("Volume", "Left Pinky (Height)"),
-    ("Zoom", "Two-Hand Spread"),
-    ("Desktop", "Left 4-Finger Swipe"),
-    ("Pause/Wake", "Hold Middle (1s)"),
-    ("Quit / Screen", "Press Q / F"),
+]
+
+GUIDE_SECONDARY = [
+    ("Scroll", "Peace Sign"),
+    ("Volume", "Pinky Height"),
+    ("Desktop", "4-Finger Swipe"),
+]
+
+GUIDE_BOTH = [
+    ("Zoom In / Out", "Spread / Pinch"),
+]
+
+GUIDE_SYSTEM = [
+    ("Pause / Wake", "Hold Middle (1s)"),
+    ("Quit / Full", "Press Q / F"),
 ]
 
 
@@ -40,24 +48,51 @@ class CinematicHUD:
         if not getattr(config, 'SHOW_GUIDE', True):
             return
         h, w = img.shape[:2]
-        panel_w = 260
-        panel_h = 335
+        panel_w = 270
+        panel_h = 375
         panel_x = w - panel_w - 20
         panel_y = 20
 
         overlay = img.copy()
-        cv2.rectangle(overlay, (panel_x, panel_y), (panel_x + panel_w, panel_y + panel_h), (25, 25, 25), -1)
-        cv2.addWeighted(overlay, 0.75, img, 0.25, 0, img)
-        cv2.rectangle(img, (panel_x, panel_y), (panel_x + panel_w, panel_y + panel_h), (70, 70, 70), 1)
+        cv2.rectangle(overlay, (panel_x, panel_y), (panel_x + panel_w, panel_y + panel_h), (20, 20, 20), -1)
+        cv2.addWeighted(overlay, 0.8, img, 0.2, 0, img)
+        cv2.rectangle(img, (panel_x, panel_y), (panel_x + panel_w, panel_y + panel_h), (60, 60, 60), 1)
 
-        cv2.putText(img, "GESTURE GUIDE", (panel_x + 15, panel_y + 25), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 1)
-        cv2.line(img, (panel_x + 15, panel_y + 35), (panel_x + panel_w - 15, panel_y + 35), (70, 70, 70), 1)
+        cv2.putText(img, "GESTURE GUIDE", (panel_x + 15, panel_y + 24), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 255), 1)
+        cv2.line(img, (panel_x + 15, panel_y + 32), (panel_x + panel_w - 15, panel_y + 32), (60, 60, 60), 1)
 
-        y = panel_y + 58
-        for action, gesture in GUIDE_ITEMS:
-            cv2.putText(img, f"{action}:", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (180, 180, 180), 1)
-            cv2.putText(img, gesture, (panel_x + 110, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 255, 255), 1)
-            y += 24
+        y = panel_y + 50
+
+        cv2.putText(img, "RIGHT HAND (CURSOR)", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, config.COLOR_PRIMARY, 1)
+        y += 18
+        for action, gesture in GUIDE_PRIMARY:
+            cv2.putText(img, f"{action}:", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (160, 160, 160), 1)
+            cv2.putText(img, gesture, (panel_x + 110, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (230, 230, 230), 1)
+            y += 19
+
+        y += 6
+        cv2.putText(img, "LEFT HAND (UTILITY)", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, config.COLOR_SECONDARY, 1)
+        y += 18
+        for action, gesture in GUIDE_SECONDARY:
+            cv2.putText(img, f"{action}:", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (160, 160, 160), 1)
+            cv2.putText(img, gesture, (panel_x + 110, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (230, 230, 230), 1)
+            y += 19
+
+        y += 6
+        cv2.putText(img, "BOTH HANDS", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, config.COLOR_ZOOM, 1)
+        y += 18
+        for action, gesture in GUIDE_BOTH:
+            cv2.putText(img, f"{action}:", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (160, 160, 160), 1)
+            cv2.putText(img, gesture, (panel_x + 110, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (230, 230, 230), 1)
+            y += 19
+
+        y += 6
+        cv2.putText(img, "CONTROLS", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (140, 140, 140), 1)
+        y += 18
+        for action, gesture in GUIDE_SYSTEM:
+            cv2.putText(img, f"{action}:", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (160, 160, 160), 1)
+            cv2.putText(img, gesture, (panel_x + 110, y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (230, 230, 230), 1)
+            y += 19
 
     def _palm_center(self, hand_landmarks, w, h):
         idx = hand_landmarks[INDEX_MCP]
