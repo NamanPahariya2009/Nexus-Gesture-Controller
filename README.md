@@ -82,9 +82,8 @@ pip install -r requirements.txt
 Double-click `run.bat` or run:
 ```bash
 cd backend
-python -B main.py
+python main.py
 ```
-*(The `-B` flag prevents Python from writing `__pycache__` directories to your folder).*
 
 ### 3. Load the Chrome Extension (Optional)
 1. Open Google Chrome and go to `chrome://extensions/`
