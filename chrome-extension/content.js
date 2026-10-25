@@ -45,6 +45,7 @@ const gestureLabels = {
     'SWIPE': 'SWIPE',
     'FIST': 'FIST',
     'DRAG_ACTIVE': 'DRAGGING',
+    'ZOOM': 'ZOOM',
     'IDLE': 'IDLE',
     'SLEEPING': 'PAUSED',
     'SLEEP_TOGGLE': 'WAIT',

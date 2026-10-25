@@ -1,5 +1,6 @@
 import cv2
 import time
+import math
 import numpy as np
 import pyautogui
 
@@ -42,7 +43,8 @@ class SystemController:
             beta=config.ONE_EURO_BETA,
             d_cutoff=config.ONE_EURO_D_CUTOFF,
         )
-        classifier = GestureClassifier()
+        classifier_primary = GestureClassifier()
+        classifier_secondary = GestureClassifier()
         cursor = PhysicsCursor()
         hud = CinematicHUD()
         switcher = DesktopSwitcher()
@@ -57,6 +59,7 @@ class SystemController:
         last_toggle_time = 0.0
         last_click_time = 0.0
         last_scroll_y = None
+        prev_zoom_dist = None
 
         while self.running:
             current_time = time.time()
@@ -88,18 +91,76 @@ class SystemController:
 
             detection = self.tracker.process(img_rgb, ts_ms)
 
-            hand_landmarks = None
+            landmarks_list = detection.hand_landmarks if detection.hand_landmarks else []
+            primary_landmarks = None
+            secondary_landmarks = None
+
+            if len(landmarks_list) == 1:
+                primary_landmarks = landmarks_list[0]
+                secondary_landmarks = None
+                classifier_secondary.process(None)
+                prev_zoom_dist = None
+            elif len(landmarks_list) >= 2:
+                h0, h1 = landmarks_list[0], landmarks_list[1]
+                x0 = (h0[0].x + h0[5].x + h0[17].x) / 3.0
+                x1 = (h1[0].x + h1[5].x + h1[17].x) / 3.0
+
+                if getattr(config, 'PRIMARY_HAND', 'Right') == 'Right':
+                    if x0 > x1:
+                        primary_landmarks, secondary_landmarks = h0, h1
+                    else:
+                        primary_landmarks, secondary_landmarks = h1, h0
+                else:
+                    if x0 < x1:
+                        primary_landmarks, secondary_landmarks = h0, h1
+                    else:
+                        primary_landmarks, secondary_landmarks = h1, h0
+            else:
+                prev_zoom_dist = None
+
+            state_p, meta_p = "IDLE", {}
+            state_s, meta_s = "IDLE", {}
+            zoom_active = False
+
+            if primary_landmarks is not None:
+                state_p, meta_p = classifier_primary.process(primary_landmarks)
+
+            if secondary_landmarks is not None:
+                state_s, meta_s = classifier_secondary.process(secondary_landmarks)
+
+            if primary_landmarks is not None and secondary_landmarks is not None:
+                p_cx = (primary_landmarks[0].x + primary_landmarks[5].x + primary_landmarks[17].x) / 3.0
+                p_cy = (primary_landmarks[0].y + primary_landmarks[5].y + primary_landmarks[17].y) / 3.0
+                s_cx = (secondary_landmarks[0].x + secondary_landmarks[5].x + secondary_landmarks[17].x) / 3.0
+                s_cy = (secondary_landmarks[0].y + secondary_landmarks[5].y + secondary_landmarks[17].y) / 3.0
+                current_dist = math.hypot(p_cx - s_cx, p_cy - s_cy)
+
+                can_zoom_p = state_p in ("MOVE", "CLICK_LEFT", "IDLE")
+                can_zoom_s = state_s in ("MOVE", "CLICK_LEFT", "IDLE")
+
+                if can_zoom_p and can_zoom_s:
+                    if prev_zoom_dist is not None:
+                        ddist = current_dist - prev_zoom_dist
+                        if abs(ddist) > config.ZOOM_DEADZONE:
+                            zoom_amount = int(ddist * config.ZOOM_SPEED * 100)
+                            if zoom_amount != 0:
+                                pyautogui.keyDown('ctrl')
+                                pyautogui.scroll(zoom_amount)
+                                pyautogui.keyUp('ctrl')
+                                zoom_active = True
+                    prev_zoom_dist = current_dist
+                else:
+                    prev_zoom_dist = None
+            else:
+                prev_zoom_dist = None
+
             delta_x, delta_y = 0.0, 0.0
-            state = "IDLE"
-            meta = {}
 
-            if detection.hand_landmarks:
-                hand_landmarks = detection.hand_landmarks[0]
-
-                idx = hand_landmarks[5]
-                pnk = hand_landmarks[17]
-                wrs = hand_landmarks[0]
-                mid = hand_landmarks[9]
+            if primary_landmarks is not None:
+                idx = primary_landmarks[5]
+                pnk = primary_landmarks[17]
+                wrs = primary_landmarks[0]
+                mid = primary_landmarks[9]
                 norm_x = (idx.x + pnk.x + wrs.x + mid.x * 2.0) / 5.0
                 norm_y = (idx.y + pnk.y + wrs.y + mid.y * 2.0) / 5.0
 
@@ -111,85 +172,82 @@ class SystemController:
                     delta_y = curr_y - prev_hand_y
                 prev_hand_x, prev_hand_y = curr_x, curr_y
 
-                state, meta = classifier.process(hand_landmarks)
-                raw_state = state
-                confidence = meta.get("confidence", 0.0)
+                raw_state_p = state_p
 
-                if state in ("SLEEPING", "SLEEP_TOGGLE"):
-                    cursor.reset()
-
-                elif state == "FIST":
-                    cursor.reset()
-                    if (current_time - last_toggle_time) > config.DRAG_TOGGLE_COOLDOWN:
-                        drag_active = not drag_active
-                        last_toggle_time = current_time
-                        if drag_active:
-                            pyautogui.mouseDown()
-                        else:
-                            pyautogui.mouseUp()
-
-                elif drag_active:
-                    state = "DRAG_ACTIVE"
-                    if raw_state in ("MOVE", "IDLE"):
-                        cursor.update_relative(delta_x, delta_y, dt)
-
-                else:
-                    if state == "MOVE":
-                        cursor.update_relative(delta_x, delta_y, dt)
-
-                    elif state == "CLICK_LEFT":
+                if not zoom_active:
+                    if state_p in ("SLEEPING", "SLEEP_TOGGLE"):
                         cursor.reset()
-                        if (current_time - last_click_time) > config.CLICK_COOLDOWN:
-                            pyautogui.click()
-                            last_click_time = current_time
 
-                    elif state == "CLICK_RIGHT":
+                    elif state_p == "FIST":
                         cursor.reset()
-                        if (current_time - last_click_time) > config.CLICK_COOLDOWN:
-                            pyautogui.rightClick()
-                            last_click_time = current_time
+                        if (current_time - last_toggle_time) > config.DRAG_TOGGLE_COOLDOWN:
+                            drag_active = not drag_active
+                            last_toggle_time = current_time
+                            if drag_active:
+                                pyautogui.mouseDown()
+                            else:
+                                pyautogui.mouseUp()
 
-                    elif state == "DOUBLE_CLICK":
-                        cursor.reset()
-                        if (current_time - last_click_time) > config.CLICK_COOLDOWN:
-                            pyautogui.doubleClick()
-                            last_click_time = current_time
+                    elif drag_active:
+                        state_p = "DRAG_ACTIVE"
+                        if raw_state_p in ("MOVE", "IDLE"):
+                            cursor.update_relative(delta_x, delta_y, dt)
 
-                    elif state == "SCROLL":
-                        cursor.reset()
-                        scroll_y = meta.get("norm_y", 0.5)
-                        if last_scroll_y is not None:
-                            dy = scroll_y - last_scroll_y
-                            if abs(dy) > 0.003:
-                                pyautogui.scroll(int(-dy * config.SCROLL_SPEED * 100))
-                        last_scroll_y = scroll_y
+                    else:
+                        if state_p == "MOVE":
+                            cursor.update_relative(delta_x, delta_y, dt)
 
-                    elif state == "VOLUME":
-                        cursor.reset()
-                        vol_y = meta.get("norm_y", 0.5)
-                        vol = int(np.interp(vol_y, [0.1, 0.9], [100, 0]))
-                        vol = max(0, min(100, vol))
-                        set_volume(vol)
-                        meta["volume_pct"] = vol
+                        elif state_p == "CLICK_LEFT":
+                            cursor.reset()
+                            if (current_time - last_click_time) > config.CLICK_COOLDOWN:
+                                pyautogui.click()
+                                last_click_time = current_time
 
-                    elif state == "SWIPE":
-                        cursor.reset()
-                        swipe_x = meta.get("norm_x", 0.5)
-                        result = switcher.update(
-                            swipe_x,
-                            config.SWIPE_COOLDOWN,
-                            config.SWIPE_THRESHOLD,
-                        )
-                        if result:
-                            meta["swipe_dir"] = result
+                        elif state_p == "CLICK_RIGHT":
+                            cursor.reset()
+                            if (current_time - last_click_time) > config.CLICK_COOLDOWN:
+                                pyautogui.rightClick()
+                                last_click_time = current_time
 
-                    if state != "SCROLL":
-                        last_scroll_y = None
+                        elif state_p == "DOUBLE_CLICK":
+                            cursor.reset()
+                            if (current_time - last_click_time) > config.CLICK_COOLDOWN:
+                                pyautogui.doubleClick()
+                                last_click_time = current_time
 
-                    if state != "SWIPE":
-                        switcher.reset()
+                        if secondary_landmarks is None:
+                            if state_p == "SCROLL":
+                                cursor.reset()
+                                scroll_y = meta_p.get("norm_y", 0.5)
+                                if last_scroll_y is not None:
+                                    dy = scroll_y - last_scroll_y
+                                    if abs(dy) > 0.003:
+                                        pyautogui.scroll(int(-dy * config.SCROLL_SPEED * 100))
+                                last_scroll_y = scroll_y
 
-                hud.draw(img, hand_landmarks, state, confidence, meta)
+                            elif state_p == "VOLUME":
+                                cursor.reset()
+                                vol_y = meta_p.get("norm_y", 0.5)
+                                vol = int(np.interp(vol_y, [0.1, 0.9], [100, 0]))
+                                vol = max(0, min(100, vol))
+                                set_volume(vol)
+                                meta_p["volume_pct"] = vol
+
+                            elif state_p == "SWIPE":
+                                cursor.reset()
+                                swipe_x = meta_p.get("norm_x", 0.5)
+                                result = switcher.update(
+                                    swipe_x,
+                                    config.SWIPE_COOLDOWN,
+                                    config.SWIPE_THRESHOLD,
+                                )
+                                if result:
+                                    meta_p["swipe_dir"] = result
+
+                            if state_p != "SCROLL":
+                                last_scroll_y = None
+                            if state_p != "SWIPE":
+                                switcher.reset()
 
             else:
                 if drag_active:
@@ -202,14 +260,57 @@ class SystemController:
                 smoother.reset()
                 cursor.reset()
                 switcher.reset()
-                classifier.process(None)
-                hud.draw(img, None, "IDLE", 0.0)
+                classifier_primary.process(None)
 
+            if secondary_landmarks is not None and not zoom_active:
+                if state_s == "VOLUME":
+                    vol_y = meta_s.get("norm_y", 0.5)
+                    vol = int(np.interp(vol_y, [0.1, 0.9], [100, 0]))
+                    vol = max(0, min(100, vol))
+                    set_volume(vol)
+                    meta_s["volume_pct"] = vol
+
+                elif state_s == "SCROLL":
+                    scroll_y = meta_s.get("norm_y", 0.5)
+                    if last_scroll_y is not None:
+                        dy = scroll_y - last_scroll_y
+                        if abs(dy) > 0.003:
+                            pyautogui.scroll(int(-dy * config.SCROLL_SPEED * 100))
+                    last_scroll_y = scroll_y
+
+                elif state_s == "SWIPE":
+                    swipe_x = meta_s.get("norm_x", 0.5)
+                    result = switcher.update(
+                        swipe_x,
+                        config.SWIPE_COOLDOWN,
+                        config.SWIPE_THRESHOLD,
+                    )
+                    if result:
+                        meta_s["swipe_dir"] = result
+
+                if state_s != "SCROLL":
+                    last_scroll_y = None
+                if state_s != "SWIPE":
+                    switcher.reset()
+
+            hud.draw(
+                img,
+                primary_landmarks,
+                state_p,
+                confidence=1.0,
+                meta=meta_p,
+                secondary_landmarks=secondary_landmarks,
+                state_s=state_s,
+                meta_s=meta_s,
+                zoom_active=zoom_active,
+            )
+
+            active_gesture = "ZOOM" if zoom_active else state_p
             self.ws.update(
-                mode=state,
+                mode=active_gesture,
                 fps=fps,
-                hand_detected=(hand_landmarks is not None),
-                gesture=state,
+                hand_detected=(primary_landmarks is not None or secondary_landmarks is not None),
+                gesture=active_gesture,
             )
 
             cv2.putText(img, f"{config.APP_NAME}  |  FPS: {fps}",

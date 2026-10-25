@@ -14,6 +14,9 @@ Most webcam-based mouse controllers map camera coordinates directly to screen pi
 
 ## Gesture Map
 
+When both hands are in view, the **Right Hand** acts as the primary cursor controller while the **Left Hand** acts as a utility controller for scrolling, volume, and desktop navigation simultaneously. If only one hand is visible, all gestures work seamlessly on that single hand.
+
+### Primary Hand (Cursor & Actions)
 | Gesture | Action | Description |
 |---|---|---|
 | Open Palm or Pointing Index | Move Cursor | Relative movement with dynamic acceleration |
@@ -21,10 +24,23 @@ Most webcam-based mouse controllers map camera coordinates directly to screen pi
 | Pinch Thumb + Middle | Right Click | Opens context menu |
 | Pinch Thumb + Ring | Double Click | Executes double left-click |
 | Closed Fist | Toggle Drag | Locks mouse button down for dragging; fist again to release |
+
+### Secondary Hand (Utilities & Navigation)
+| Gesture | Action | Description |
+|---|---|---|
 | Peace Sign (Index + Middle Up) | Scroll | Vertical hand position controls scroll direction and speed |
 | Pinky Finger Up | Volume Control | Hand height maps directly to system volume (0-100%) |
 | Four Fingers + Horizontal Swipe | Switch Desktop | Sends Windows virtual desktop shortcuts (Win + Ctrl + Arrow) |
 | Middle Finger Only (Hold 1s) | Sleep / Wake | Pauses all input until held again for 1 second |
+
+### Two-Hand Gestures
+| Gesture | Action | Description |
+|---|---|---|
+| Two-Hand Distance Change | Zoom In / Out | Moving both hands apart zooms in; bringing them together zooms out |
+
+### Controls
+| Input | Action | Description |
+|---|---|---|
 | Keyboard 'Q' | Quit | Releases all held buttons and exits cleanly |
 | Keyboard 'F' | Fullscreen | Toggles camera HUD between windowed and fullscreen |
 
