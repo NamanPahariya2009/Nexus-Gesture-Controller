@@ -1,0 +1,8 @@
+mediapipe
+opencv-python
+numpy
+pyautogui
+websockets
+screeninfo
+comtypes
+pycaw
