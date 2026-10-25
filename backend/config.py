@@ -3,9 +3,11 @@ import pyautogui
 
 APP_NAME = "Nexus Gesture Controller"
 CAMERA_ID = 0
+FULLSCREEN = True
+SHOW_GUIDE = True
 WINDOW_WIDTH, WINDOW_HEIGHT = pyautogui.size()
-CAM_WIDTH = 640
-CAM_HEIGHT = 480
+CAM_WIDTH = 1280
+CAM_HEIGHT = 720
 TARGET_FPS = 60
 WS_PORT = 8765
 SHOW_SKELETON = True

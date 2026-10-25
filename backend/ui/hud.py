@@ -16,11 +16,48 @@ HAND_CONNECTIONS = [
     (0, 17),
 ]
 
+GUIDE_ITEMS = [
+    ("Move", "Palm / Index"),
+    ("Left Click", "Thumb + Index"),
+    ("Right Click", "Thumb + Middle"),
+    ("Double Click", "Thumb + Ring"),
+    ("Drag / Drop", "Closed Fist"),
+    ("Scroll", "Peace Sign (Up/Down)"),
+    ("Volume", "Pinky (Height)"),
+    ("Desktop", "4-Finger Swipe"),
+    ("Pause/Wake", "Hold Middle (1s)"),
+    ("Quit", "Press Q"),
+    ("Fullscreen", "Press F"),
+]
+
 
 class CinematicHUD:
     def __init__(self):
         self.trail = deque(maxlen=20)
         self.pulse_phase = 0.0
+
+    def _draw_guide(self, img):
+        if not getattr(config, 'SHOW_GUIDE', True):
+            return
+        h, w = img.shape[:2]
+        panel_w = 260
+        panel_h = 335
+        panel_x = w - panel_w - 20
+        panel_y = 20
+
+        overlay = img.copy()
+        cv2.rectangle(overlay, (panel_x, panel_y), (panel_x + panel_w, panel_y + panel_h), (25, 25, 25), -1)
+        cv2.addWeighted(overlay, 0.75, img, 0.25, 0, img)
+        cv2.rectangle(img, (panel_x, panel_y), (panel_x + panel_w, panel_y + panel_h), (70, 70, 70), 1)
+
+        cv2.putText(img, "GESTURE GUIDE", (panel_x + 15, panel_y + 25), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 1)
+        cv2.line(img, (panel_x + 15, panel_y + 35), (panel_x + panel_w - 15, panel_y + 35), (70, 70, 70), 1)
+
+        y = panel_y + 58
+        for action, gesture in GUIDE_ITEMS:
+            cv2.putText(img, f"{action}:", (panel_x + 15, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (180, 180, 180), 1)
+            cv2.putText(img, gesture, (panel_x + 110, y), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 255, 255), 1)
+            y += 24
 
     def _palm_center(self, hand_landmarks, w, h):
         idx = hand_landmarks[INDEX_MCP]
@@ -33,6 +70,8 @@ class CinematicHUD:
     def draw(self, img, hand_landmarks, state, confidence, meta=None):
         if meta is None:
             meta = {}
+
+        self._draw_guide(img)
 
         h, w, _ = img.shape
 

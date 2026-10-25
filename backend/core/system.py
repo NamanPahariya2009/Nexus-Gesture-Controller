@@ -24,9 +24,14 @@ class SystemController:
         self.tracker = HandTracker()
         self.start_time = time.time()
         self.ws = WebSocketServer(port=config.WS_PORT)
+        self.fullscreen = getattr(config, 'FULLSCREEN', True)
 
     def run(self):
-        print(f"[{config.APP_NAME}] System initialized. Press 'Q' to quit.")
+        print(f"[{config.APP_NAME}] System initialized. Press 'Q' to quit, 'F' for fullscreen.")
+
+        cv2.namedWindow(config.APP_NAME, cv2.WINDOW_NORMAL)
+        if self.fullscreen:
+            cv2.setWindowProperty(config.APP_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
         smoother = OneEuroFilter(
             time.time(), [0.5, 0.5],
@@ -191,8 +196,13 @@ class SystemController:
 
             cv2.imshow(config.APP_NAME, img)
 
-            if cv2.waitKey(1) == ord('q'):
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
                 self.running = False
+            elif key == ord('f'):
+                self.fullscreen = not self.fullscreen
+                prop = cv2.WINDOW_FULLSCREEN if self.fullscreen else cv2.WINDOW_NORMAL
+                cv2.setWindowProperty(config.APP_NAME, cv2.WND_PROP_FULLSCREEN, prop)
 
         if drag_active:
             pyautogui.mouseUp()
